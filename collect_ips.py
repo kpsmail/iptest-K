@@ -19,19 +19,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # 全局变量与配置信息
 # -------------------------------
 URLS = [
+    'https://api.uouin.com/cloudflare.html',
     'https://ip.164746.xyz',
-    'https://raw.githubusercontent.com/ymyuuu/IPDB/refs/heads/main/BestCF/bestcfv4.txt',
-    'https://raw.githubusercontent.com/ZhiXuanWang/cf-speed-dns/refs/heads/main/ipTop10.html',
-    'https://raw.githubusercontent.com/ymyuuu/IPDB/refs/heads/main/BestProxy/bestproxy%26country.txt',
-    'https://raw.githubusercontent.com/ymyuuu/IPDB/refs/heads/main/BestGC/bestgcv4.txt',
-    'https://clashfreenode.com/feed/v2ray-20250606.txt',
-    'https://raw.githubusercontent.com/asdsadsddas123/freevpn/main/README.md',
-    'https://raw.githubusercontent.com/vxiaov/free_proxies/refs/heads/main/links.txt',
-    'https://raw.githubusercontent.com/yorkLiu/FreeV2RayNode/refs/heads/main/v2ray.txt',
-    'https://raw.githubusercontent.com/mostaghimbot/FreeV2rayConfig/refs/heads/master/subscription_output.txt',
-    'https://raw.githubusercontent.com/MatinGhanbari/v2ray-configs/main/subscriptions/filtered/subs/hy2.txt',
-    'https://raw.githubusercontent.com/MatinGhanbari/v2ray-configs/main/subscriptions/v2ray/super-sub.txt',
-    'https://raw.githubusercontent.com/newbeastly/netproxy/refs/heads/main/ip/local/result.csv'
+    'https://stock.hostmonit.com/CloudFlareYes'
 ]
 
 IP_PATTERN = r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b'
