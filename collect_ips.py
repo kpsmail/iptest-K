@@ -21,8 +21,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 URLS = [
     'https://api.uouin.com/cloudflare.html',
     'https://ip.164746.xyz',
-    'https://stock.hostmonit.com/CloudFlareYes',
-    'https://raw.githubusercontent.com/kpsmail/bestip/refs/heads/dtaa/bestipsg.txt'
+    'https://stock.hostmonit.com/CloudFlareYes'
 ]
 
 IP_PATTERN = r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b'
