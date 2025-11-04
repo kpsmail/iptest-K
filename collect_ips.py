@@ -9,9 +9,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # =============================================================================
 # 脚本功能概述（无需安装第三方依赖即可运行）：
 #   1. 测试本机是否能通过 HTTP GET 访问指定的“ping”网址（https://www.google.com/generate_204）
-#   2. 从预设的一组 URL 中并发抓取内容（使用 urllib），提取 IPv4 地址
-#   3. 对提取到的所有 IP 进行“TCP 端口连通性检测”（示例性检测 80、443、1080）
-#   4. 对“可能可用节点”获取国家代码，并写入本地文件 ip.txt
+#   2. 从预设的一组 URL 中并发抓取内容（使用 urllib），提取 IPv4 地址（支持带端口与不带端口）
+#   3. 对提取到的所有 IP 进行“TCP 端口连通性检测”
+#      - 不带端口的 IP 会用 common_ports 中的端口进行检测
+#      - 带端口的 IP 只检测该自带端口
+#   4. 对“可能可用节点”获取国家代码，并写入本地文件 ip.txt（格式 ip:port#country）
 #   5. 控制台打印各步骤进度和结果
 # =============================================================================
 
@@ -24,7 +26,8 @@ URLS = [
     'https://stock.hostmonit.com/CloudFlareYes'
 ]
 
-IP_PATTERN = r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b'
+# 支持匹配形如 "1.2.3.4" 或 "1.2.3.4:8080"
+IP_PATTERN = r'\b\d{1,3}(?:\.\d{1,3}){3}(?::\d{1,5})?\b'
 PING_URL = 'https://www.google.com/generate_204'
 OUTPUT_FILE = 'ip.txt'
 MAX_WORKERS = 5
@@ -35,10 +38,11 @@ USER_AGENT = (
     '(KHTML, like Gecko) Chrome/120.0.0 Safari/537.36'
 )
 
+# ip_set 存放 (ip, port_or_None) 的元组
 ip_set = set()
+# alive_ip_set 存放 (ip, port) 的元组，port 为 int（表示已确认开放的端口）
 alive_ip_set = set()
 MAX_CHECK_WORKERS = 30
-
 
 # -------------------------------
 # 函数：测试本机能否访问指定的 PING_URL
@@ -60,15 +64,56 @@ def test_connectivity():
 # 函数：验证 IP 是否合法
 # -------------------------------
 def is_valid_ip(ip):
-    parts = ip.split('.')
-    return len(parts) == 4 and all(0 <= int(part) < 256 for part in parts)
+    try:
+        parts = ip.split('.')
+        if len(parts) != 4:
+            return False
+        for part in parts:
+            if not part.isdigit():
+                return False
+            n = int(part)
+            if n < 0 or n > 255:
+                return False
+        return True
+    except Exception:
+        return False
 
 
 # -------------------------------
-# 函数：从字符串中提取所有符合 IPv4 格式的 IP
+# 函数：解析 ip[:port] 字符串，返回 (ip, port_or_None)
+# -------------------------------
+def parse_ip_port(s):
+    if ':' in s:
+        ip_part, port_part = s.split(':', 1)
+        if not is_valid_ip(ip_part):
+            return None
+        if not port_part.isdigit():
+            return None
+        port = int(port_part)
+        if 1 <= port <= 65535:
+            return (ip_part, port)
+        else:
+            return None
+    else:
+        if is_valid_ip(s):
+            return (s, None)
+        else:
+            return None
+
+
+# -------------------------------
+# 函数：从字符串中提取所有符合 IPv4 或 IPv4:port 格式的地址
+# 返回值：[(ip, port_or_None), ...]
 # -------------------------------
 def extract_ips_from_text(text):
-    return list(set(ip for ip in re.findall(IP_PATTERN, text) if is_valid_ip(ip)))
+    raw_matches = re.findall(IP_PATTERN, text)
+    results = []
+    for m in raw_matches:
+        parsed = parse_ip_port(m)
+        if parsed:
+            results.append(parsed)
+    # 去重并返回
+    return list(set(results))
 
 
 # -------------------------------
@@ -104,10 +149,11 @@ def fetch_and_extract_ips():
             url = future_to_url[future]
             try:
                 ips = future.result()
-                ip_set.update(ips)
+                for ip_tuple in ips:
+                    ip_set.add(ip_tuple)
             except Exception as exc:
                 print(f"    [!] 异常发生在抓取 {url}: {exc}")
-    print(f"\n[*] 抓取完成，共提取到 {len(ip_set)} 个唯一 IP。\n")
+    print(f"\n[*] 抓取完成，共提取到 {len(ip_set)} 个唯一 IP 或 IP:port 条目。\n")
 
 
 # -------------------------------
@@ -120,51 +166,73 @@ def check_port_open(ip, port, timeout=3):
         sock.connect((ip, port))
         sock.close()
         return True
-    except:
+    except Exception:
         return False
 
 
 # -------------------------------
-# 函数：判断某个 IP 是否“可能可用”
+# 函数：为某个 IP 检查一组端口，返回所有开放的端口列表
 # -------------------------------
-def is_node_alive(ip):
-    with ThreadPoolExecutor(max_workers=3) as executor:  # 保持端口检测并发度
-        futures = {executor.submit(check_port_open, ip, port): port for port in common_ports}
-        for future in as_completed(futures):
-            if future.result():
-                return True
-    return False
+def check_ports_for_ip(ip, ports, timeout=3):
+    open_ports = []
+    # 使用较小的并行度检查单个 IP 的多个端口
+    with ThreadPoolExecutor(max_workers=min(4, max(1, len(ports)))) as executor:
+        future_to_port = {executor.submit(check_port_open, ip, port, timeout): port for port in ports}
+        for future in as_completed(future_to_port):
+            port = future_to_port[future]
+            try:
+                if future.result():
+                    open_ports.append(port)
+            except Exception:
+                pass
+    return open_ports
 
 
 # -------------------------------
 # 函数：对提取到的 IP 进行可用性检测
+# 说明：
+#  - 对于 (ip, None) : 使用 common_ports 检测，若有开放端口则记录每个开放端口 (ip, open_port)
+#  - 对于 (ip, port)  : 仅检测该 port，若开放则记录 (ip, port)
 # -------------------------------
 def filter_alive_ips():
     print("[*] 开始对提取到的 IP 进行端口连通性检测……")
-    alive_ips = []
-    with ThreadPoolExecutor(max_workers=MAX_CHECK_WORKERS) as executor:  # 新增并发控制
-        future_to_ip = {executor.submit(is_node_alive, ip): ip for ip in ip_set}
-        for future in as_completed(future_to_ip):
-            ip = future_to_ip[future]
+    alive_items = []
+    with ThreadPoolExecutor(max_workers=MAX_CHECK_WORKERS) as executor:
+        future_to_item = {}
+        for ip, port in ip_set:
+            if port is None:
+                ports_to_check = common_ports
+            else:
+                ports_to_check = [port]
+            # 提交工作，返回 (ip, ports_checked) 结果
+            future = executor.submit(check_ports_for_ip, ip, ports_to_check)
+            future_to_item[future] = (ip, ports_to_check)
+
+        for future in as_completed(future_to_item):
+            ip, ports_checked = future_to_item[future]
             try:
-                if future.result():
-                    alive_ips.append(ip)
-                    print(f"    [√] 节点可用：{ip}")
+                open_ports = future.result()
+                if open_ports:
+                    for p in open_ports:
+                        alive_items.append((ip, p))
+                        print(f"    [√] 节点可用：{ip}:{p}")
                 else:
-                    print(f"    [×] 节点不可用：{ip}")
+                    # 如果这是来源带端口的条目，打印不可用；如果来源不带端口，打印不可用也是有意义
+                    print(f"    [×] 节点不可用：{ip} （检测端口：{','.join(map(str, ports_checked))}）")
             except Exception as exc:
                 print(f"    [!] 异常发生在检测 {ip}: {exc}")
-    alive_ip_set.update(alive_ips)
-    print(f"\n[*] 可用性检测完成，共 {len(alive_ip_set)} 个可能可用 IP。\n")
+    alive_ip_set.update(alive_items)
+    print(f"\n[*] 可用性检测完成，共 {len(alive_ip_set)} 个可能可用 IP:port。\n")
 
 
 # -------------------------------
-# 函数：查询 IP 地理位置并写入文件
+# 函数：查询 IP 地理位置并写入文件（格式：ip:port#country）
 # -------------------------------
 def get_ip_location_and_write():
     try:
         with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
-            for ip in sorted(alive_ip_set):
+            # 对 alive_ip_set 进行排序，先按 IP 字符串排序，再按端口
+            for ip, port in sorted(alive_ip_set, key=lambda x: (x[0], x[1])):
                 country = 'Unknown'
                 try:
                     api_url = f'https://ipinfo.io/{ip}/json'
@@ -172,9 +240,9 @@ def get_ip_location_and_write():
                     with urllib.request.urlopen(req, timeout=5) as resp:
                         data = json.loads(resp.read().decode('utf-8', errors='ignore'))
                         country = data.get('country', 'Unknown')
-                except:
+                except Exception:
                     pass
-                f.write(f"{ip} ({country})\n")
+                f.write(f"{ip}:{port}#{country}\n")
         print(f"[*] 可用 IP 已写入文件：{OUTPUT_FILE}\n")
     except Exception as e:
         print(f"[!] 写入文件时出错：{e}")
