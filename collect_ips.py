@@ -24,7 +24,8 @@ URLS = [
     'https://api.uouin.com/cloudflare.html',
     'https://ip.164746.xyz',
     'https://stock.hostmonit.com/CloudFlareYes',
-    'https://raw.githubusercontent.com/Fido6/bestip/refs/heads/dtaa/bestipsg.txt'
+    'https://raw.githubusercontent.com/Fido6/bestip/refs/heads/dtaa/bestiphk.txt',
+    'https://raw.githubusercontent.com/Fido6/bestip/refs/heads/dtaa/bestipjp.txt'
 ]
 
 # 支持匹配形如 "1.2.3.4" 或 "1.2.3.4:8080"
