@@ -34,7 +34,7 @@ PING_URL = 'https://www.google.com/generate_204'
 OUTPUT_FILE = 'ip.txt'
 MAX_WORKERS = 5
 RETRY_LIMIT = 2
-common_ports = [443]
+common_ports = [443] # [80, 443, 1080]
 USER_AGENT = (
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
     '(KHTML, like Gecko) Chrome/120.0.0 Safari/537.36'
