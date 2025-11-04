@@ -21,9 +21,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # 全局变量与配置信息
 # -------------------------------
 URLS = [
-    'https://api.uouin.com/cloudflare.html',
-    'https://ip.164746.xyz',
-    'https://stock.hostmonit.com/CloudFlareYes',
     'https://raw.githubusercontent.com/Fido6/bestip/refs/heads/dtaa/bestiphk.txt',
     'https://raw.githubusercontent.com/Fido6/bestip/refs/heads/dtaa/bestipjp.txt',
     'https://raw.githubusercontent.com/Fido6/bestip/refs/heads/dtaa/bestipsg.txt'
