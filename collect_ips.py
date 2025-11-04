@@ -25,7 +25,8 @@ URLS = [
     'https://ip.164746.xyz',
     'https://stock.hostmonit.com/CloudFlareYes',
     'https://raw.githubusercontent.com/Fido6/bestip/refs/heads/dtaa/bestiphk.txt',
-    'https://raw.githubusercontent.com/Fido6/bestip/refs/heads/dtaa/bestipjp.txt'
+    'https://raw.githubusercontent.com/Fido6/bestip/refs/heads/dtaa/bestipjp.txt',
+    'https://raw.githubusercontent.com/Fido6/bestip/refs/heads/dtaa/bestipsg.txt'
 ]
 
 # 支持匹配形如 "1.2.3.4" 或 "1.2.3.4:8080"
@@ -244,7 +245,7 @@ def get_ip_location_and_write():
                         country = data.get('country', 'Unknown')
                 except Exception:
                     pass
-                f.write(f"{ip}:{port}#{country}{port}\n")
+                f.write(f"{ip}:{port}#{country}-{port}\n")
         print(f"[*] 可用 IP 已写入文件：{OUTPUT_FILE}\n")
     except Exception as e:
         print(f"[!] 写入文件时出错：{e}")
