@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # =============================================================================
 # 脚本功能概述（无需安装第三方依赖即可运行）：
-#   1. 测试本机是否能通过 HTTP GET 访问指定的“ping”网址（https://www.google.com/generate_204）
+#   1. 测试本机是否能通过 HTTP GET 访问指定的“ping”网址（https://www.google.com/generate_204）(https://www.gstatic.com/generate_204)
 #   2. 从预设的一组 URL 中并发抓取内容（使用 urllib），提取 IPv4 地址（支持带端口与不带端口）
 #   3. 对提取到的所有 IP 进行“TCP 端口连通性检测”
 #      - 不带端口的 IP 会用 common_ports 中的端口进行检测
@@ -28,7 +28,7 @@ URLS = [
 
 # 支持匹配形如 "1.2.3.4" 或 "1.2.3.4:8080"
 IP_PATTERN = r'\b\d{1,3}(?:\.\d{1,3}){3}(?::\d{1,5})?\b'
-PING_URL = 'https://www.google.com/generate_204'
+PING_URL = 'https://www.gstatic.com/generate_204'
 OUTPUT_FILE = 'ip.txt'
 MAX_WORKERS = 5
 RETRY_LIMIT = 2
